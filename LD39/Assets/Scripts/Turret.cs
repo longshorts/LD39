@@ -2,33 +2,47 @@
 using System.Collections.Generic;
 using UnityEngine;
 
-public class Turret : MonoBehaviour {
+public class Turret : BatteryDock {
 
     Transform enemyContainer;
-    public bool Powered;
     public float range = 20f;
-    public float shootCooldown = 1f;
+    public float shootCooldown = 0.5f;
     public float shootCurrentTime = 0f;
+    public float shotCost = 1f;
     public Enemy enemyTarget;
 
-    private Battery m_containedBattery;
-    
+    GameObject bulletPrefab;
+    Transform bulletSpawn;
+
+    int barrelIndex = 0;
 
     [SerializeField]
     private Transform gunPlatform;
-    [SerializeField]
-    private Transform batteryContainer;
+    private GameObject clickTurretObj;
 
     // Use this for initialization
     void Start () {
         enemyContainer = GameObject.Find("Enemy_Container").transform;
+        bulletPrefab = Resources.Load("Prefabs/Bullet") as GameObject;
+        bulletSpawn = transform.FindChild("Base").FindChild("BulletSpawn");
+        clickTurretObj = GameObject.Find("TurretChargeObj");
     }
 
     // Update is called once per frame
     void Update () {
-        if (Powered)
+
+        UpdateCharge();
+
+        if (IsPowered())
         {
             shootCurrentTime += Time.deltaTime;
+
+            if(enemyTarget)
+            if (enemyTarget.isDead)
+                enemyTarget = null;
+
+            if (enemyTarget == null)
+                FindEnemey();
 
             if (enemyTarget)
             {
@@ -42,8 +56,7 @@ public class Turret : MonoBehaviour {
                 }
             }
 
-            if (enemyTarget == null)
-                FindEnemey();
+            
         }
 
 
@@ -57,7 +70,6 @@ public class Turret : MonoBehaviour {
             if(Vector3.Distance(transform.position, enemies[i].transform.position) <= range && !enemies[i].isDead)
             {
                 enemyTarget = enemies[i];
-                Shoot(enemyTarget);
                 break;
             }
         }
@@ -70,24 +82,25 @@ public class Turret : MonoBehaviour {
         var rot = gunPlatform.eulerAngles;
         rot.x = 0;
         gunPlatform.eulerAngles = rot;
+        
+        if(shootCurrentTime >= shootCooldown)
 
         if(shootCurrentTime >= shootCooldown &&
             Vector3.Distance(transform.position, enemyTarget.transform.position) <= range)
         {
-            enemyTarget.ModifyHealth(-1);
-            if (enemyTarget.isDead)
-                enemyTarget = null;
-
+                GameObject bullet = GameObject.Instantiate(bulletPrefab, bulletSpawn.GetChild(barrelIndex).position, Quaternion.identity);
+                bullet.GetComponent<Bullet>().target = enemyTarget;
+                barrelIndex = (barrelIndex + 1) % 2;
+            
             shootCurrentTime = 0;
+            m_containedBattery.ModifyCharge(-shotCost * Game.instance.shotEnergyMultiplier);
         }
     }
 
-    public void AquireBattery(Battery battery)
+    public override void AquireBattery(Battery battery)
     {
-        battery.transform.SetParent(batteryContainer);
-        m_containedBattery = battery;
-        iTween.MoveTo(battery.gameObject, batteryContainer.position, 0.5f);
-        Powered = true;
+        base.AquireBattery(battery);
+        clickTurretObj.SetActive(false);
     }
 
     private void OnDrawGizmos()

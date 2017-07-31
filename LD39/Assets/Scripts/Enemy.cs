@@ -35,6 +35,8 @@ public class Enemy : MonoBehaviour {
             deathTimer += Time.deltaTime;
             if(deathTimer >= deathTime)
             {
+                GameObject.FindObjectOfType<Game>().EnemiesKilled++;
+                Game.instance.EnemyKilled();
                 GameObject.Destroy(gameObject);
             }
             return;
@@ -55,6 +57,7 @@ public class Enemy : MonoBehaviour {
         {
             float step = movementSpeed * Time.deltaTime;
             transform.position = Vector3.MoveTowards(transform.position, destination.position, step);
+            transform.LookAt(destination);
             if(Vector3.Distance(transform.position, destination.position) <= destinationDistance)
             {
                 destination = null;
@@ -64,6 +67,8 @@ public class Enemy : MonoBehaviour {
 
     void GoalReached()
     {
+        GameObject.FindObjectOfType<Game>().ModifyBaseHealth(-1);
+        Game.instance.EnemyKilled();
         GameObject.Destroy(gameObject);
     }
 
